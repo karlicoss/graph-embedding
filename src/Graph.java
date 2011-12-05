@@ -16,7 +16,7 @@ public class Graph {
 		ans += ") ";
 		for (int i = 0; i < size(); i++) {
 			for (int j = i + 1; j < size(); j++) {
-				if (m[i][j] == 1) {
+				if (adjMatrix[i][j] == 1) {
 					ans += Integer.toString(getLabel(i)) + "->"
 							+ Integer.toString(getLabel(j)) + "; ";
 				}
@@ -39,7 +39,7 @@ public class Graph {
 		}
 
 		public String toString() {
-			return getFrom() + "->" + getTo();
+			return from() + "->" + to();
 		}
 
 		public Edge(Integer from, Integer to) {
@@ -50,24 +50,27 @@ public class Graph {
 			setFirst(a);
 		}
 
-		public Integer getFrom() {
-			return getFirst();
+		public Integer from() {
+			return first();
 		}
 
 		public void setTo(Integer a) {
 			setSecond(a);
 		}
 
-		public Integer getTo() {
-			return getSecond();
+		public Integer to() {
+			return second();
 		}
 	}
 
-	private int[][] m;
+	/**
+	 * We assume graph is undirected, so adjMatrix[i][j] == adjMatrix[j][i]
+	 */
+	private int[][] adjMatrix;
 	private int[] label;
 
 	public Graph(int n) {
-		m = new int[n][n];
+		adjMatrix = new int[n][n];
 		label = new int[n];
 		for (int i = 0; i < n; i++)
 			label[i] = i;
@@ -82,59 +85,78 @@ public class Graph {
 	}
 
 	public void addEdge(int f, int t) {
-		m[f][t] = 1;
-		m[t][f] = 1;
+		adjMatrix[f][t] = 1;
+		adjMatrix[t][f] = 1;
 	}
 
 	public void deleteEdge(int f, int t) {
-		m[f][t] = 0;
-		m[t][f] = 0;
+		adjMatrix[f][t] = 0;
+		adjMatrix[t][f] = 0;
 	}
 
 	public boolean existsEdge(int f, int t) {
-		return m[f][t] == 1;
+		return adjMatrix[f][t] == 1;
 	}
 
 	public int size() {
-		return m.length;
+		return adjMatrix.length;
 	}
-
-	public Pair<Integer, Integer> dfsCycle(int[] used, int[] pred, int p, int v) {
+	
+	private boolean dfsCycle(ArrayList<Edge> result, int[] used, int predecessor, int v) {
 		used[v] = 1;
-		pred[v] = p;
 		for (int i = 0; i < size(); i++) {
-			if (m[v][i] == 1) {
-				if (used[i] == 1 && i != p) {
-					return new Pair<Integer, Integer>(v, i);
+			if (i == predecessor)
+				continue;
+			if (adjMatrix[v][i] == 0)
+				continue;
+			if (used[i] == 0) {
+				result.add(new Edge(v, i));
+				if (dfsCycle(result, used, v, i))
+				{
+					//if we got an answer, it has already been restored
+					return true;
+				} else {
+					//otherwise, current branch doesn't lead to a predecessor, so there's no cycle
+					result.remove(result.size() - 1);
 				}
-				if (used[i] == 0) {
-					Pair<Integer, Integer> tans = dfsCycle(used, pred, v, i);
-					if (tans != null)
-						return tans;
+			} if (used[i] == 1) {
+				result.add(new Edge(v, i));
+				//found a cycle, restoring the answer
+				ArrayList<Edge> cycle = new ArrayList<Edge>();
+				for (int j = 0; j < result.size(); j++) {
+					if (result.get(j).from() == i) {
+						cycle.addAll(j, result);
+						result = cycle;
+						return true;
+					}
 				}
-			}
+				//the algorithm should never get here, but anyway…
+				return true;
+			} 
 		}
 		used[v] = 2;
-		return null;
-	}
-
+		return false;
+	} 
+	/*
+	 * This method assumes graph is connected
+	 */
 	public ArrayList<Integer> getCycle() {
-		ArrayList<Integer> ans = new ArrayList<Integer>();
-		int[] pred = new int[size()];
-		Pair<Integer, Integer> c = dfsCycle(new int[size()], pred, -1, 0);
-		if (c != null) {
-			for (int cur = c.getFirst(); cur != c.getSecond(); cur = pred[cur]) {
-				ans.add(cur);
-			}
-			ans.add(c.getSecond());
+		ArrayList<Edge> cycle = new ArrayList<Graph.Edge>();
+		boolean gotCycle = dfsCycle(cycle, new int[size()], -1, 0);
+		if (!gotCycle)
+			return null;
+		else {
+			ArrayList<Integer> answer = new ArrayList<Integer>();
+			for (Edge e: cycle)
+				answer.add(e.from());
+			return answer;
 		}
-		return ans;
 	}
 
 	private void dfsSegments(int[] used, boolean[] laidv, Graph result, int v) {
 		used[v] = 1;
 		for (int i = 0; i < size(); i++) {
-			if (m[v][i] == 1) {
+			if (adjMatrix[v][i] == 1) {
 				result.addEdge(v, i);
 				if (used[i] == 0 && !laidv[i])
 					dfsSegments(used, laidv, result, i);
@@ -149,7 +171,7 @@ public class Graph {
 		// 1. searching for one-edge segments
 		for (int i = 0; i < size(); i++) {
 			for (int j = i + 1; j < size(); j++) {
-				if (m[i][j] == 1 && !laide[i][j] && laidv[i] && laidv[j]) {
+				if (adjMatrix[i][j] == 1 && !laide[i][j] && laidv[i] && laidv[j]) {
 					Graph t = new Graph(size());
 					t.addEdge(i, j);
 					ans.add(t);
@@ -345,7 +367,7 @@ public class Graph {
 		used[v] = 1;
 		chain.add(v);
 		for (int i = 0; i < size(); i++) {
-			if (m[v][i] == 1 && used[i] == 0) {
+			if (adjMatrix[v][i] == 1 && used[i] == 0) {
 				if (!laidv[i]) {
 					dfsChain(used, laidv, chain, i);
 				} else {
@@ -379,7 +401,7 @@ public class Graph {
 		used[v] = true;
 		result.add(v);
 		for (int i = 0; i < size(); i++) {
-			if (m[v][i] == 1 && !used[i])
+			if (adjMatrix[v][i] == 1 && !used[i])
 				dfsCCD(used, result, i);
 		}
 	}
@@ -475,8 +497,8 @@ public class Graph {
 
 		// Reassigning bridges' labels
 		for (Edge bridge : bridges) {
-			bridge.setFrom(getLabel(bridge.getFrom()));
-			bridge.setTo(getLabel(bridge.getTo()));
+			bridge.setFrom(getLabel(bridge.from()));
+			bridge.setTo(getLabel(bridge.to()));
 		}
 
 		int colorsCount = maxColor.getValue();

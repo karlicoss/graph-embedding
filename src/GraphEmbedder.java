@@ -45,8 +45,8 @@ public class GraphEmbedder {
 			// 2. Dividing graph in edge biconnected components
 			Pair<ArrayList<Graph>, ArrayList<Graph.Edge>> bridgesDecomposition = curCC
 					.getBridgesDecomposition();
-			ArrayList<Graph> edgeBC = bridgesDecomposition.getFirst();
-			ArrayList<Graph.Edge> bridges = bridgesDecomposition.getSecond();
+			ArrayList<Graph> edgeBC = bridgesDecomposition.first();
+			ArrayList<Graph.Edge> bridges = bridgesDecomposition.second();
 			System.out.println("The connected component contains "
 					+ edgeBC.size() + " edge biconnected components and "
 					+ (bridges.size() == 0 ? "no" : bridges.size())
@@ -69,9 +69,9 @@ public class GraphEmbedder {
 				// 3. Dividing graph into vertex biconnected components
 				Pair<ArrayList<Graph>, ArrayList<Integer>> cutPointsDecomposition = curEdgeBC
 						.getCutPointsDecomposition();
-				ArrayList<Graph> vertexBC = cutPointsDecomposition.getFirst();
+				ArrayList<Graph> vertexBC = cutPointsDecomposition.first();
 				ArrayList<Integer> cutPoints = cutPointsDecomposition
-						.getSecond();
+						.second();
 				System.out.println("The edge biconnected component contains "
 						+ vertexBC.size()
 						+ " vertex biconnected components and "
@@ -102,14 +102,14 @@ public class GraphEmbedder {
 						System.out
 								.println("The vertex biconnected connected component is planar");
 						System.out.println("The faces are:");
-						for (ArrayList<Integer> face : embedding.getFirst()) {
-							if (face != embedding.getSecond()) {
+						for (ArrayList<Integer> face : embedding.first()) {
+							if (face != embedding.second()) {
 								System.out.println(curVertexBC.toLabels(face));
 							}
 						}
 						System.out.println("The outer face is:");
 						System.out.println(curVertexBC.toLabels(embedding
-								.getSecond()));
+								.second()));
 					}
 				}
 			}
