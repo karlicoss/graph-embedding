@@ -102,10 +102,10 @@ public class Graph {
 		return adjMatrix.length;
 	}
 	
-	private boolean dfsCycle(ArrayList<Edge> result, int[] used, int predecessor, int v) {
+	private boolean dfsCycle(ArrayList<Edge> result, int[] used, int parent, int v) {
 		used[v] = 1;
 		for (int i = 0; i < size(); i++) {
-			if (i == predecessor)
+			if (i == parent)
 				continue;
 			if (adjMatrix[v][i] == 0)
 				continue;
@@ -429,102 +429,104 @@ public class Graph {
 		return result;
 	}
 
-	private void dfsBD(MutableInteger time, int[] enter, int[] ret, int p, int v) {
-		time.increment();
-		enter[v] = time.getValue();
-		ret[v] = enter[v];
+	private void dfsBD(MutableInteger timer, int[] enter, int[] ret, int[] used, int parent, int v) {
+		timer.increment();
+		ret[v] = enter[v] = timer.getValue();
+		used[v] = 1;
 		for (int i = 0; i < size(); i++) {
-			if (existsEdge(v, i)) {
-				if (enter[i] == 0) {
-					dfsBD(time, enter, ret, v, i);
-					ret[v] = Math.min(ret[v], ret[i]);
+			if (adjMatrix[v][i] == 0)
+				continue;
+			if (used[i] == 0) {
+				dfsBD(timer, enter, ret, used, v, i);
+				ret[v] = Math.min(ret[v], ret[i]);
+			} else {
+				if (i != parent && used[i] == 1) {
+					ret[v] = Math.min(ret[v], enter[i]);
+				}
+			}
+		}
+		used[v] = 2;
+	}
+	
+	private void dfsPaintBD(MutableInteger maxColor, Integer curColor, int[] enter, int[] ret, int[] color, int[] used, int parent, int v) {
+		used[v] = 1;
+		color[v] = curColor;
+		for (int i = 0; i < size(); i++) {
+			if (adjMatrix[v][i] == 0)
+				continue;
+			if (used[i] == 0) {
+				if (ret[i] > enter[v]) {
+					maxColor.increment();
+					dfsPaintBD(maxColor, new Integer(maxColor.getValue()), enter, ret, color, used, v, i);
 				} else {
-					if (i != p) {
-						ret[v] = Math.min(ret[v], enter[i]);
-					}
+					dfsPaintBD(maxColor, curColor, enter, ret, color, used, v, i);
 				}
 			}
 		}
-	}
-
-	private void dfsPaintBD(int[] enter, int[] ret, int[] colors, int curColor,
-			MutableInteger maxColor, ArrayList<Edge> bridges, int v) {
-		colors[v] = curColor;
-		for (int i = 0; i < size(); i++) {
-			if (existsEdge(v, i)) {
-				if (colors[i] == 0) {
-					if (enter[i] == ret[i]) {
-						bridges.add(new Edge(v, i));
-						maxColor.increment();
-						dfsPaintBD(enter, ret, colors, maxColor.getValue(),
-								maxColor, bridges, i);
-					} else {
-						dfsPaintBD(enter, ret, colors, curColor, maxColor,
-								bridges, i);
-					}
-				}
-			}
-		}
-	}
-
+		used[v] = 2;
+	} 
+	
 	public Pair<ArrayList<Graph>, ArrayList<Edge>> getBridgesDecomposition() {
 		ArrayList<Graph> edgeConnectedComponents = new ArrayList<Graph>();
-		ArrayList<Edge> bridges = new ArrayList<Edge>();
-		if (size() == 1) {
-			edgeConnectedComponents.add(this); // TODO: clone
-			return new Pair<ArrayList<Graph>, ArrayList<Edge>>(
-					edgeConnectedComponents, bridges);
-		}
-
+		ArrayList<Edge> bridges = new ArrayList<Graph.Edge>();
+		
 		int[] enter = new int[size()];
 		int[] ret = new int[size()];
-		MutableInteger time = new MutableInteger(0);
+		MutableInteger timer = new MutableInteger(0);
+		int[] used = new int[size()];
 		for (int i = 0; i < size(); i++) {
-			if (enter[i] == 0) {
-				dfsBD(time, enter, ret, -1, i);
+			// Graph should be traversed from any vertex, but anyway…
+			if (used[i] == 0) {
+				dfsBD(timer, enter, ret, used, -1, i);
 			}
 		}
-
-		int[] colors = new int[size()];
+		
 		MutableInteger maxColor = new MutableInteger(0);
+		used = new int[size()];
+		int[] color = new int[size()];
 		for (int i = 0; i < size(); i++) {
-			if (colors[i] == 0) {
-				maxColor.increment();
-				dfsPaintBD(enter, ret, colors, maxColor.getValue(), maxColor,
-						bridges, i);
+			if (used[i] == 0) {
+				dfsPaintBD(maxColor, new Integer(maxColor.getValue()), enter, ret, color, used, -1, i);
+				maxColor.increment();// looks like nothing bad is gonna happen if we swap these?
 			}
 		}
-
-		// Reassigning bridges' labels
-		for (Edge bridge : bridges) {
-			bridge.setFrom(getLabel(bridge.from()));
-			bridge.setTo(getLabel(bridge.to()));
+		//for (int i = 0; i < 
+		//maxColor is the number of biconnected components
+		int componentsCount = maxColor.getValue();
+		ArrayList<Integer>[] vertices = new ArrayList[componentsCount];
+		for (int i = 0; i < componentsCount; i++) {
+			vertices[i] = new ArrayList<Integer>();
 		}
-
-		int colorsCount = maxColor.getValue();
-		ArrayList<Integer>[] comp = new ArrayList[colorsCount];
-		for (int i = 0; i < colorsCount; i++)
-			comp[i] = new ArrayList<Integer>();
+		
 		for (int i = 0; i < size(); i++) {
-			comp[colors[i] - 1].add(i);
-		}
-		for (int i = 0; i < colorsCount; i++) {
-			Graph g = new Graph(comp[i].size());
-			for (int j = 0; j < comp[i].size(); j++) {
-				g.setLabel(j, getLabel(comp[i].get(j)));
-			}
-			for (int j = 0; j < comp[i].size(); j++) {
-				for (int k = 0; k < comp[i].size(); k++) {
-					if (existsEdge(comp[i].get(j), comp[i].get(k)))
-						g.addEdge(j, k);
+			vertices[color[i]].add(i);
+		} 
+
+		for (int q = 0; q < componentsCount; q++) {
+			Graph cur = new Graph(vertices[q].size());
+			for (int i = 0; i < vertices[q].size(); i++) {
+				cur.setLabel(i, getLabel(vertices[q].get(i)));
+			} 
+			for (int i = 0; i < vertices[q].size(); i++) {
+				for (int j = 0; j < vertices[q].size(); j++) {
+					if (existsEdge(vertices[q].get(i), vertices[q].get(j))) {
+						cur.addEdge(i, j);
+					}
 				}
 			}
-			edgeConnectedComponents.add(g);
+			edgeConnectedComponents.add(cur);
 		}
-		return new Pair<ArrayList<Graph>, ArrayList<Edge>>(
-				edgeConnectedComponents, bridges);
+		
+		for (int i = 0; i < size(); i++) {
+			for (int j = i + 1; j < size(); j++) {
+				if (color[i] != color[j] && existsEdge(i, j)) {
+					bridges.add(new Edge(getLabel(i), getLabel(j)));
+				}
+			}
+		}
+		return new Pair<ArrayList<Graph>, ArrayList<Edge>>(edgeConnectedComponents, bridges);
 	}
-
+	
 	private void dfsCPD(int[] used, int[] enter, int[] ret,
 			MutableInteger time, int p, int v) {
 		time.increment();
