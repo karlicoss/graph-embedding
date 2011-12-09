@@ -12,13 +12,15 @@ public class Graph {
 		ans += "( ";
 		for (int i = 0; i < size(); i++) {
 			ans += getLabel(i) + " ";
-		}
-		ans += ") ";
+		}	
+		ans += ")\n";
 		for (int i = 0; i < size(); i++) {
 			for (int j = i + 1; j < size(); j++) {
 				if (adjMatrix[i][j] == 1) {
-					ans += Integer.toString(getLabel(i)) + "->"
-							+ Integer.toString(getLabel(j)) + "; ";
+					ans += Integer.toString(i) + "->"
+							+ Integer.toString(j)
+							+ "(real " + Integer.toString(getLabel(i)) + "->"
+							+ Integer.toString(getLabel(j)) + ")\n";
 				}
 			}
 		}
@@ -125,8 +127,9 @@ public class Graph {
 				ArrayList<Edge> cycle = new ArrayList<Edge>();
 				for (int j = 0; j < result.size(); j++) {
 					if (result.get(j).from() == i) {
-						cycle.addAll(j, result);
-						result = cycle;
+						cycle.addAll(result.subList(j, result.size()));
+						result.clear();
+						result.addAll(cycle);
 						return true;
 					}
 				}
