@@ -1,89 +1,58 @@
 import java.util.Collections;
 import java.util.ArrayList;
-import java.util.HashSet;
 
-/**
- * Created by IntelliJ IDEA. User: karlicos Date: 30.09.11 Time: 18:31 To change
- * this template use File | Settings | File Templates.
- */
 public class Graph {
+	/**
+	 * We assume graph is undirected, so adjMatrix[i][j] == adjMatrix[j][i]
+	 */
+	private int[][] adjMatrix;
+
 	public String toString() {
 		String ans = new String();
-		ans += "( ";
-		for (int i = 0; i < size(); i++) {
-			ans += getLabel(i) + " ";
-		}	
-		ans += ")\n";
 		for (int i = 0; i < size(); i++) {
 			for (int j = i + 1; j < size(); j++) {
 				if (adjMatrix[i][j] == 1) {
-					ans += Integer.toString(i) + "->"
-							+ Integer.toString(j)
-							+ "(real " + Integer.toString(getLabel(i)) + "->"
-							+ Integer.toString(getLabel(j)) + ")\n";
+					ans += i + "->" + j;
 				}
 			}
 		}
 		return ans;
 	}
 
-	public ArrayList<Integer> toLabels(ArrayList<Integer> vnumbers) {
-		ArrayList<Integer> result = new ArrayList<Integer>();
-		for (int v : vnumbers) {
-			result.add(label[v]);
-		}
-		return result;
-	}
+	public class Edge {
+		int from, to;
 
-	public class Edge extends Pair<Integer, Integer> {
 		public Edge() {
-			super(null, null);
 		}
 
 		public String toString() {
-			return from() + "->" + to();
+			return from + "->" + to;
 		}
 
-		public Edge(Integer from, Integer to) {
-			super(from, to);
+		public Edge(int from, int to) {
+			this.from = from;
+			this.to = to;
 		}
 
-		public void setFrom(Integer a) {
-			setFirst(a);
+		public void setFrom(int f) {
+			from = f;
 		}
 
 		public Integer from() {
-			return first();
+			return from;
 		}
 
-		public void setTo(Integer a) {
-			setSecond(a);
+		public void setTo(int t) {
+			to = t;
 		}
 
 		public Integer to() {
-			return second();
+			return to();
 		}
 	}
 
-	/**
-	 * We assume graph is undirected, so adjMatrix[i][j] == adjMatrix[j][i]
-	 */
-	private int[][] adjMatrix;
-	private int[] label;
-
 	public Graph(int n) {
 		adjMatrix = new int[n][n];
-		label = new int[n];
-		for (int i = 0; i < n; i++)
-			label[i] = i;
-	}
-
-	public void setLabel(int v, int l) {
-		label[v] = l;
-	}
-
-	public int getLabel(int v) {
-		return label[v];
 	}
 
 	public void addEdge(int f, int t) {
@@ -103,8 +72,9 @@ public class Graph {
 	public int size() {
 		return adjMatrix.length;
 	}
-	
-	private boolean dfsCycle(ArrayList<Edge> result, int[] used, int parent, int v) {
+
+	private boolean dfsCycle(ArrayList<Edge> result, int[] used, int parent,
+			int v) {
 		used[v] = 1;
 		for (int i = 0; i < size(); i++) {
 			if (i == parent)
@@ -113,17 +83,18 @@ public class Graph {
 				continue;
 			if (used[i] == 0) {
 				result.add(new Edge(v, i));
-				if (dfsCycle(result, used, v, i))
-				{
-					//if we got an answer, it has already been restored
+				if (dfsCycle(result, used, v, i)) {
+					// if we got an answer, it has already been restored
 					return true;
 				} else {
-					//otherwise, current branch doesn't lead to a predecessor, so there's no cycle
+					// otherwise, current branch doesn't lead to a predecessor,
+					// so there's no cycle
 					result.remove(result.size() - 1);
 				}
-			} if (used[i] == 1) {
+			}
+			if (used[i] == 1) {
 				result.add(new Edge(v, i));
-				//found a cycle, restoring the answer
+				// found a cycle, restoring the answer
 				ArrayList<Edge> cycle = new ArrayList<Edge>();
 				for (int j = 0; j < result.size(); j++) {
 					if (result.get(j).from() == i) {
@@ -133,13 +104,14 @@ public class Graph {
 						return true;
 					}
 				}
-				//the algorithm should never get here, but anyway…
+				// the algorithm should never get here, but anyway…
 				return true;
-			} 
+			}
 		}
 		used[v] = 2;
 		return false;
-	} 
+	}
+
 	/*
 	 * This method assumes graph is connected
 	 */
@@ -150,7 +122,7 @@ public class Graph {
 			return null;
 		else {
 			ArrayList<Integer> answer = new ArrayList<Integer>();
-			for (Edge e: cycle)
+			for (Edge e : cycle)
 				answer.add(e.from());
 			return answer;
 		}
@@ -170,15 +142,14 @@ public class Graph {
 	private ArrayList<Graph> getSegments(boolean[] laidv, boolean[][] laide) {
 		ArrayList<Graph> ans = new ArrayList<Graph>();
 
-		int segcount = 0;
 		// 1. searching for one-edge segments
 		for (int i = 0; i < size(); i++) {
 			for (int j = i + 1; j < size(); j++) {
-				if (adjMatrix[i][j] == 1 && !laide[i][j] && laidv[i] && laidv[j]) {
+				if (adjMatrix[i][j] == 1 && !laide[i][j] && laidv[i]
+						&& laidv[j]) {
 					Graph t = new Graph(size());
 					t.addEdge(i, j);
 					ans.add(t);
-					segcount++;
 				}
 			}
 		}
@@ -189,7 +160,6 @@ public class Graph {
 				Graph res = new Graph(size());
 				dfsSegments(used, laidv, res, i);
 				ans.add(res);
-				segcount++;
 			}
 		}
 
@@ -224,7 +194,7 @@ public class Graph {
 	}
 
 	public Pair<ArrayList<ArrayList<Integer>>, ArrayList<Integer>> getEmbedding() {
-		if (size() == 1) {
+		if (size() == 1) { // Singletone graph is the only acyclic biconnected graph
 			ArrayList<ArrayList<Integer>> faces = new ArrayList<ArrayList<Integer>>();
 			ArrayList<Integer> face = new ArrayList<Integer>();
 			face.add(0);
@@ -357,12 +327,6 @@ public class Graph {
 		}
 		return new Pair<ArrayList<ArrayList<Integer>>, ArrayList<Integer>>(
 				faces, outerFace);
-	}
-
-	private void removeCycle(ArrayList<Integer> cycle) {
-		for (int i = 0; i < cycle.size(); i++) {
-			deleteEdge(cycle.get(i), cycle.get((i + 1) % cycle.size()));
-		}
 	}
 
 	private void dfsChain(int used[], boolean[] laidv,

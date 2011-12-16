@@ -39,11 +39,11 @@ public class GraphEmbedder {
 			System.out.println("The faces are:");
 			for (ArrayList<Integer> face : embedding.first()) {
 				if (face != embedding.second()) {
-					System.out.println(g.toLabels(face));
+					System.out.println(face);
 				}
 			}
 			System.out.println("The outer face is:");
-			System.out.println(g.toLabels(embedding.second()));
+			System.out.println(embedding.second());
 		}
 		System.out.println();
 	}
