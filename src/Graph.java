@@ -12,13 +12,13 @@ public class Graph {
 		for (int i = 0; i < size(); i++) {
 			for (int j = i + 1; j < size(); j++) {
 				if (adjMatrix[i][j] == 1) {
-					ans += i + "->" + j;
+					ans += i + "->" + j + "\n";
 				}
 			}
 		}
 		return ans;
 	}
-
+	
 	public class Edge {
 		int from, to;
 
@@ -178,21 +178,26 @@ public class Graph {
 		}
 	}
 
-	private boolean containsSegment(final ArrayList<Integer> face,
+	private boolean compatibleSegment(final ArrayList<Integer> face,
 			final Graph segment, boolean[] laidv) {
-		for (int f = 0; f < size(); f++) {
-			for (int t = 0; t < size(); t++) {
-				if (segment.existsEdge(f, t)) {
-					if ((laidv[f] && !face.contains(f))
-							|| (laidv[t] && !face.contains(t))) {
-						return false;
-					}
+		boolean[] inSegment = new boolean[size()];
+		for (int i = 0; i < size(); i++) {
+			for (int j = 0; j < size(); j++) {
+				if (segment.existsEdge(i, j)) {
+					inSegment[i] = true;
+					break;
 				}
+			}
+		}
+		for (int v = 0; v < size(); v++) {
+			if (inSegment[v] && laidv[v]) {//v is a contact vertex
+				if (!face.contains(v))
+					return false;
 			}
 		}
 		return true;
 	}
-
+	
 	public Pair<ArrayList<ArrayList<Integer>>, ArrayList<Integer>> getEmbedding() {
 		if (size() == 1) { // Singletone graph is the only acyclic biconnected graph
 			ArrayList<ArrayList<Integer>> faces = new ArrayList<ArrayList<Integer>>();
@@ -204,137 +209,138 @@ public class Graph {
 					faces, face);
 		}
 
-		ArrayList<Integer> c = getCycle();
-		if (c.isEmpty())
-			return null;
+		ArrayList<Integer> cycle = getCycle();
+		
 		ArrayList<ArrayList<Integer>> faces = new ArrayList<ArrayList<Integer>>();
-		ArrayList<Integer> outerFace = (ArrayList<Integer>) c.clone();
-		faces.add(c);
+		ArrayList<Integer> outerFace = (ArrayList<Integer>) cycle.clone();
+		faces.add(cycle);
 		faces.add(outerFace);
 
 		boolean[] laidv = new boolean[size()];
 		boolean[][] laide = new boolean[size()][size()];
-		for (int i : c) {
+		for (int i : cycle) {
 			laidv[i] = true;
 		}
-		layChain(laide, c, true);
+		layChain(laide, cycle, true);
+		
 		while (true) {
 			ArrayList<Graph> segments = getSegments(laidv, laide);
 			if (segments.size() == 0)
 				break;
+			
 			int[] count = new int[segments.size()];
-			ArrayList<Integer>[] lface = new ArrayList[segments.size()];
+			ArrayList<Integer>[] compatibleFace = new ArrayList[segments.size()];
 			for (int i = 0; i < segments.size(); i++) {
 				for (ArrayList<Integer> face : faces) {
-					if (containsSegment(face, segments.get(i), laidv)) {
-						lface[i] = face;
+					if (compatibleSegment(face, segments.get(i), laidv)) {
+						compatibleFace[i] = face;
 						count[i]++;
 					}
 				}
-				if (containsSegment(outerFace, segments.get(i), laidv)) {
-					lface[i] = outerFace;
+				if (compatibleSegment(outerFace, segments.get(i), laidv)) {
+					compatibleFace[i] = outerFace;
 					count[i]++;
 				}
 			}
+			
 			int mi = 0; // Searching for the segment which can be embedded in
 						// the minimal number of faces
 			for (int i = 0; i < segments.size(); i++) {
 				if (count[i] < count[mi])
 					mi = i;
 			}
-			if (count[mi] == 0) {
+			if (count[mi] == 0)
 				return null;
-			} else {
-				// Let's embed the mi'th segment
-				// Searchig for a chain and laying it
-				ArrayList<Integer> chain = segments.get(mi).getChain(laidv);
-				for (int i : chain) {
-					laidv[i] = true;
-				}
-				layChain(laide, chain, false);
+			
+			// Embedding the mi'th segment
+			// Searching for a chain and laying it
+			ArrayList<Integer> chain = segments.get(mi).getChain(laidv);
+			for (int i : chain)
+				laidv[i] = true;
+			layChain(laide, chain, false);
 
-				ArrayList<Integer> face = lface[mi], face1 = new ArrayList<Integer>(), face2 = new ArrayList<Integer>();
-				int chst = 0, chfn = 0;
-				for (int i = 0; i < face.size(); i++) {
-					if (face.get(i).equals(chain.get(0))) {
-						chst = i;
-					}
-					if (face.get(i).equals(chain.get(chain.size() - 1))) {
-						chfn = i;
-					}
+			// Dividing the face into two 
+			ArrayList<Integer> face = compatibleFace[mi], face1 = new ArrayList<Integer>(), face2 = new ArrayList<Integer>();
+			int chst = 0, chfn = 0;
+			for (int i = 0; i < face.size(); i++) {
+				if (face.get(i).equals(chain.get(0))) {
+					chst = i;
 				}
-				ArrayList<Integer> rchain = (ArrayList<Integer>) chain.clone();
-				Collections.reverse(rchain);
-				int fsize = face.size();
-				if (face != outerFace) {
-					if (chst < chfn) {
-						face1.addAll(chain);
-						for (int i = (chfn + 1) % fsize; i != chst; i = (i + 1)
-								% fsize) {
-							face1.add(face.get(i));
-						}
-						face2.addAll(rchain);
-						for (int i = (chst + 1) % fsize; i != chfn; i = (i + 1)
-								% fsize) {
-							face2.add(face.get(i));
-						}
-					} else {
-						face1.addAll(rchain);
-						for (int i = (chst + 1) % fsize; i != chfn; i = (i + 1)
-								% fsize) {
-							face1.add(face.get(i));
-						}
-						face2.addAll(chain);
-						for (int i = (chfn + 1) % fsize; i != chst; i = (i + 1)
-								% fsize) {
-							face2.add(face.get(i));
-						}
+				if (face.get(i).equals(chain.get(chain.size() - 1))) {
+					chfn = i;
+				}
+			}
+			ArrayList<Integer> rchain = (ArrayList<Integer>) chain.clone();
+			Collections.reverse(rchain);
+			int fsize = face.size();
+			if (face != outerFace) {
+				if (chst < chfn) {
+					face1.addAll(chain);
+					for (int i = (chfn + 1) % fsize; i != chst; i = (i + 1)
+							% fsize) {
+						face1.add(face.get(i));
 					}
-					faces.remove(face);
-					faces.add(face1);
-					faces.add(face2);
+					face2.addAll(rchain);
+					for (int i = (chst + 1) % fsize; i != chfn; i = (i + 1)
+							% fsize) {
+						face2.add(face.get(i));
+					}
 				} else {
-					ArrayList<Integer> newOuterFace = new ArrayList<Integer>();
-					if (chst < chfn) {
-						newOuterFace.addAll(chain);
-						for (int i = (chfn + 1) % fsize; i != chst; i = (i + 1)
-								% fsize) {
-							newOuterFace.add(face.get(i));
-						}
-						face2.addAll(chain);
-						for (int i = (chfn - 1 + fsize) % fsize; i != chst; i = (i - 1 + fsize)
-								% fsize) {
-							face2.add(face.get(i));
-						}
-					} else {
-						newOuterFace.addAll(rchain);
-						for (int i = (chst + 1) % fsize; i != chfn; i = (i + 1)
-								% fsize) {
-							newOuterFace.add(face.get(i));
-						}
-						face2.addAll(rchain);
-						for (int i = (chst - 1 + fsize) % fsize; i != chfn; i = (i - 1 + fsize)
-								% fsize) {
-							face2.add(face.get(i));
-						}
+					face1.addAll(rchain);
+					for (int i = (chst + 1) % fsize; i != chfn; i = (i + 1)
+							% fsize) {
+						face1.add(face.get(i));
 					}
-					faces.remove(outerFace);
-					faces.add(newOuterFace);
-					faces.add(face2);
-					outerFace = newOuterFace;
+					face2.addAll(chain);
+					for (int i = (chfn + 1) % fsize; i != chst; i = (i + 1)
+							% fsize) {
+						face2.add(face.get(i));
+					}
 				}
+				faces.remove(face);
+				faces.add(face1);
+				faces.add(face2);
+			} else {
+				ArrayList<Integer> newOuterFace = new ArrayList<Integer>();
+				if (chst < chfn) {
+					newOuterFace.addAll(chain);
+					for (int i = (chfn + 1) % fsize; i != chst; i = (i + 1)
+							% fsize) {
+						newOuterFace.add(face.get(i));
+					}
+					face2.addAll(chain);
+					for (int i = (chfn - 1 + fsize) % fsize; i != chst; i = (i - 1 + fsize)
+							% fsize) {
+						face2.add(face.get(i));
+					}
+				} else {
+					newOuterFace.addAll(rchain);
+					for (int i = (chst + 1) % fsize; i != chfn; i = (i + 1)
+							% fsize) {
+						newOuterFace.add(face.get(i));
+					}
+					face2.addAll(rchain);
+					for (int i = (chst - 1 + fsize) % fsize; i != chfn; i = (i - 1 + fsize)
+							% fsize) {
+						face2.add(face.get(i));
+					}
+				}
+				faces.remove(outerFace);
+				faces.add(newOuterFace);
+				faces.add(face2);
+				outerFace = newOuterFace;
 			}
 		}
 		return new Pair<ArrayList<ArrayList<Integer>>, ArrayList<Integer>>(
 				faces, outerFace);
 	}
 
-	private void dfsChain(int used[], boolean[] laidv,
+	private void dfsChain(boolean used[], boolean[] laidv,
 			ArrayList<Integer> chain, int v) {
-		used[v] = 1;
+		used[v] = true;
 		chain.add(v);
 		for (int i = 0; i < size(); i++) {
-			if (adjMatrix[v][i] == 1 && used[i] == 0) {
+			if (adjMatrix[v][i] == 1 && !used[i]) {
 				if (!laidv[i]) {
 					dfsChain(used, laidv, chain, i);
 				} else {
@@ -343,24 +349,26 @@ public class Graph {
 				return;
 			}
 		}
-	}
-
+	}	
+	
 	private ArrayList<Integer> getChain(boolean[] laidv) {
 		ArrayList<Integer> result = new ArrayList<Integer>();
 
+		boolean[] inGraph = new boolean[size()];
 		for (int i = 0; i < size(); i++) {
-			if (laidv[i]) {
-				boolean ingraph = false;
-				for (int j = 0; j < size(); j++) {
-					if (existsEdge(i, j))
-						ingraph = true;
-				}
-				if (ingraph) {
-					dfsChain(new int[size()], laidv, result, i);
-					break;
-				}
+			for (int j = 0; j < size(); j++) {
+				if (existsEdge(i, j))
+					inGraph[i] = true;
+			}
+		}
+		
+		for (int i = 0; i < size(); i++) {
+			if (inGraph[i] && laidv[i]) {
+				dfsChain(new boolean[size()], laidv, result, i);
+				break;
 			}
 		}
 		return result;
-	}
+	}	
+	
 }
